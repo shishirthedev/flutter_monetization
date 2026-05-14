@@ -1,0 +1,32 @@
+name: flutter_monetization
+description: >
+  A production-grade, reusable Flutter package for In-App Purchases and
+  entitlement management. Supports Android (Google Play Billing), iOS
+  (StoreKit), monthly/yearly subscriptions, lifetime purchases, restore
+  purchases, local caching, and optional Firestore sync hooks.
+version: 1.0.0
+homepage: https://github.com/your-org/flutter_monetization
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+  flutter: ">=3.10.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  in_app_purchase: ^3.2.0
+  shared_preferences: ^2.2.3
+  rxdart: ^0.27.7
+  equatable: ^2.0.5
+  meta: ^1.11.0
+  collection: ^1.18.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  mocktail: ^1.0.4
+  flutter_lints: ^4.0.0
+
+# Optional: firebase_core, cloud_firestore, firebase_auth are intentionally
+# excluded from required deps. Consumers add them only when using the
+# optional FirestoreSyncDelegate.
