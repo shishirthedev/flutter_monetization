@@ -3,7 +3,19 @@ import 'package:flutter_monetization/src/subscription/subscription_manager.dart'
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
+// ---------------------------------------------------------------------------
+// Mocks & fakes
+// ---------------------------------------------------------------------------
+
 class MockEntitlementStorage extends Mock implements EntitlementStorage {}
+
+/// Fake required by mocktail so it can construct a placeholder value for
+/// any `SubscriptionStatus` argument matched with `any()`.
+class FakeSubscriptionStatus extends Fake implements SubscriptionStatus {}
+
+// ---------------------------------------------------------------------------
+// Config helper
+// ---------------------------------------------------------------------------
 
 MonetizationConfig _config() => const MonetizationConfig(
       android: AndroidProducts(
@@ -20,7 +32,17 @@ MonetizationConfig _config() => const MonetizationConfig(
       logLevel: MonetizationLogLevel.none,
     );
 
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
 void main() {
+  // Register fallback value once for the entire test suite.
+  // Required by mocktail whenever any() is used with a custom type.
+  setUpAll(() {
+    registerFallbackValue(FakeSubscriptionStatus());
+  });
+
   late MockEntitlementStorage storage;
   late SubscriptionManager manager;
 
@@ -40,6 +62,8 @@ void main() {
     await manager.dispose();
   });
 
+  // -------------------------------------------------------------------------
+
   group('SubscriptionManager initial state', () {
     test('starts with unknown status', () {
       expect(manager.currentStatus.entitlementStatus, EntitlementStatus.unknown);
@@ -51,6 +75,8 @@ void main() {
       expect(status.entitlementStatus, EntitlementStatus.unknown);
     });
   });
+
+  // -------------------------------------------------------------------------
 
   group('SubscriptionManager loadCachedStatus', () {
     test('does nothing when cache is null', () async {
@@ -83,20 +109,21 @@ void main() {
         activePlan: SubscriptionPlan.monthly,
         platformSource: PlatformSource.googlePlay,
         expiryDate: DateTime.now().add(const Duration(days: 10)),
-        lastVerifiedAt:
-            DateTime.now().subtract(const Duration(hours: 25)), // stale
+        lastVerifiedAt: DateTime.now().subtract(const Duration(hours: 25)),
       );
       when(() => storage.load()).thenAnswer((_) async => stale);
 
       await manager.loadCachedStatus();
 
-      // Should remain unknown (stale cache not applied)
+      // Stale cache must not be applied — status stays unknown.
       expect(manager.currentStatus.entitlementStatus, EntitlementStatus.unknown);
     });
   });
 
+  // -------------------------------------------------------------------------
+
   group('SubscriptionManager onRestoreFoundNoPurchases', () {
-    test('emits notPurchased status', () async {
+    test('emits notPurchased status', () {
       manager.onRestoreFoundNoPurchases();
 
       final status = manager.currentStatus;
@@ -105,9 +132,10 @@ void main() {
     });
   });
 
+  // -------------------------------------------------------------------------
+
   group('SubscriptionManager updateFromRemote', () {
     test('upgrades when remote is better', () {
-      // Start with unknown
       expect(manager.currentStatus.entitlementStatus, EntitlementStatus.unknown);
 
       final remote = SubscriptionStatus(
@@ -123,7 +151,7 @@ void main() {
     });
 
     test('does not downgrade active to notPurchased', () {
-      // Manually set to active first via remote
+      // Push an active status in first.
       final active = SubscriptionStatus(
         entitlementStatus: EntitlementStatus.active,
         activePlan: SubscriptionPlan.yearly,
@@ -134,13 +162,12 @@ void main() {
       manager.updateFromRemote(active);
       expect(manager.currentStatus.isPremium, isTrue);
 
-      // Now try to downgrade
+      // Attempt to downgrade — must be rejected.
       final notPurchased = SubscriptionStatus.notPurchased(
         platform: PlatformSource.googlePlay,
       );
       manager.updateFromRemote(notPurchased);
 
-      // Should still be active
       expect(manager.currentStatus.isPremium, isTrue);
     });
   });
